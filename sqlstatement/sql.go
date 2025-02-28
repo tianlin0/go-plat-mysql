@@ -195,6 +195,10 @@ func (s *Statement) buildFieldNames(canUpdateFieldNames []string) []string {
 	})
 	return canUpdateFieldNamesTemp
 }
+func (s *Statement) buildOneFieldName(oneField string) string {
+	oneField = strings.ReplaceAll(oneField, "`", "")
+	return oneField
+}
 
 // getColumnListAndDataList 获取数据库的字段列表与数据
 func (s *Statement) getColumnListAndDataList(fieldNames []string, columnMap map[string]interface{}) ([]string, []interface{}) {
@@ -221,16 +225,20 @@ func (s *Statement) getColumnListAndDataList(fieldNames []string, columnMap map[
 
 // InsertSql 插入的sql语句
 func (s *Statement) InsertSql(tableName string, allColumns []string, insertMap map[string]interface{}) (string, []interface{}) {
+	allColumns = s.buildFieldNames(allColumns)
+
 	columnList, columnDataList := s.getColumnListAndDataList(allColumns, insertMap)
 	if len(columnList) == 0 {
 		return "", columnDataList
 	}
-	query := fmt.Sprintf("INSERT INTO `%s` SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+	query := fmt.Sprintf("INSERT INTO %s SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
 	return query, columnDataList
 }
 
 // UpdateSql 更新的sql语句
 func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap map[string]interface{}, whereMap map[string]interface{}) (string, []interface{}) {
+	allColumns = s.buildFieldNames(allColumns)
+
 	columnList, columnDataList := s.getColumnListAndDataList(allColumns, updateMap)
 	if len(columnList) == 0 {
 		return "", columnDataList
@@ -247,11 +255,11 @@ func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap m
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
 	if len(whereString) == 0 {
 		//没有where语句
-		query := fmt.Sprintf("UPDATE `%s` SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+		query := fmt.Sprintf("UPDATE %s SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
 		return query, columnDataList
 	}
 	columnDataList = append(columnDataList, whereDataList...)
-	query := fmt.Sprintf("UPDATE `%s` SET (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
+	query := fmt.Sprintf("UPDATE %s SET (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
 	return query, columnDataList
 }
 
@@ -269,6 +277,8 @@ func (s *Statement) UpdateSqlByWhereCondition(tableName string, allColumns []str
 
 // SelectSql 查询的sql语句
 func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr string, whereMap map[string]interface{}, offset, num int) (string, []interface{}) {
+	allColumns = s.buildFieldNames(allColumns)
+
 	if selectStr == "" {
 		selectStr = "*"
 	} else {
@@ -277,6 +287,7 @@ func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr s
 		lo.ForEach(selectList, func(item string, index int) {
 			item = strings.TrimSpace(item)
 			if lo.IndexOf(allColumns, item) >= 0 {
+				item = s.buildOneFieldName(item)
 				newSelectList = append(newSelectList, item)
 			}
 		})
@@ -297,7 +308,7 @@ func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr s
 	}
 
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
-	query := fmt.Sprintf("SELECT %s FROME `%s`", selectStr, tableName)
+	query := fmt.Sprintf("SELECT %s FROM %s", selectStr, tableName)
 	if whereString != "" {
 		query = fmt.Sprintf("%s WHERE %s", query, whereString)
 	}
@@ -325,6 +336,8 @@ func (s *Statement) SelectSqlByWhereCondition(tableName string, allColumns []str
 
 // DeleteSql 删除的sql语句
 func (s *Statement) DeleteSql(tableName string, allColumns []string, whereMap map[string]interface{}) (string, []interface{}) {
+	allColumns = s.buildFieldNames(allColumns)
+
 	//过滤key
 	whereNewMap := make(map[string]interface{})
 	for k, v := range whereMap {
@@ -333,7 +346,7 @@ func (s *Statement) DeleteSql(tableName string, allColumns []string, whereMap ma
 		}
 	}
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
-	query := fmt.Sprintf("DELETE FROME `%s`", tableName)
+	query := fmt.Sprintf("DELETE FROM %s", tableName)
 	if whereString != "" {
 		query = fmt.Sprintf("%s WHERE %s", query, whereString)
 	}
