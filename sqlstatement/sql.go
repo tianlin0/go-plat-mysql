@@ -69,11 +69,16 @@ func (s *Statement) getSqlColumnForLike(oldValue string) (retValLike string, ret
 	newValue, escape, retTrue := s.getColumnLikeSql(oldValue, likeUseReplaceList, likeUseEscapeList)
 	if retTrue {
 		if escape != "" {
-			return "? escape '" + escape + "'", newValue
+			return "? ESCAPE '" + escape + "'", newValue
 		}
 	}
 
 	return "?", newValue
+}
+
+// GetAllFieldColumnsByStruct 通过对象获取所有数据库字段名
+func (s *Statement) GetAllFieldColumnsByStruct(data interface{}, tagNames ...string) ([]string, error) {
+	return utils.GetFieldNamesByTag(data, tagNames...)
 }
 
 // GenerateWhereClauseByMap 通过Map获取where语句
@@ -220,7 +225,7 @@ func (s *Statement) InsertSql(tableName string, allColumns []string, insertMap m
 	if len(columnList) == 0 {
 		return "", columnDataList
 	}
-	query := fmt.Sprintf("INSERT INTO `%s` set (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+	query := fmt.Sprintf("INSERT INTO `%s` SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
 	return query, columnDataList
 }
 
@@ -242,11 +247,11 @@ func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap m
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
 	if len(whereString) == 0 {
 		//没有where语句
-		query := fmt.Sprintf("UPDATE `%s` set (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+		query := fmt.Sprintf("UPDATE `%s` SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
 		return query, columnDataList
 	}
 	columnDataList = append(columnDataList, whereDataList...)
-	query := fmt.Sprintf("UPDATE `%s` set (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
+	query := fmt.Sprintf("UPDATE `%s` SET (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
 	return query, columnDataList
 }
 
