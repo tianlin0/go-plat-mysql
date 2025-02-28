@@ -45,7 +45,7 @@ func (m *Dao) SetTableTagIdentifier(tagName string) {
 }
 
 // SetLogger 设置日志
-func (m *Dao) SetLogger(loggerOld interface{}) {
+func (m *Dao) SetLogger(loggerOld any) {
 	logger := setXormLogger(loggerOld)
 	//一个链接只需要执行一次
 	if logger != nil {
@@ -94,7 +94,7 @@ func (m *Dao) GetEngine() (*xorm.Engine, error) {
 }
 
 // Insert 新增，返回影响的条数和错误
-func (m *Dao) Insert(info ...interface{}) (int64, error) {
+func (m *Dao) Insert(info ...any) (int64, error) {
 	if m.daoSession != nil {
 		return m.daoSession.Insert(info...)
 	}
@@ -102,7 +102,7 @@ func (m *Dao) Insert(info ...interface{}) (int64, error) {
 }
 
 // FlagDelete 逻辑删除
-func (m *Dao) FlagDelete(id int64, info interface{}) (int64, error) {
+func (m *Dao) FlagDelete(id int64, info any) (int64, error) {
 	if m.daoSession != nil {
 		return m.daoSession.ID(id).Delete(info)
 	}
@@ -110,7 +110,7 @@ func (m *Dao) FlagDelete(id int64, info interface{}) (int64, error) {
 }
 
 // Delete 删除
-func (m *Dao) Delete(id interface{}, info interface{}) (int64, error) {
+func (m *Dao) Delete(id any, info any) (int64, error) {
 	if m.daoSession != nil {
 		return m.daoSession.ID(id).Unscoped().Delete(info)
 	}
@@ -118,7 +118,7 @@ func (m *Dao) Delete(id interface{}, info interface{}) (int64, error) {
 }
 
 // Update 更新
-func (m *Dao) Update(id interface{}, info interface{}, columns ...string) (int64, error) {
+func (m *Dao) Update(id any, info any, columns ...string) (int64, error) {
 	if m.daoSession != nil {
 		sessionIns := m.daoSession.ID(id)
 		if len(columns) > 0 {
@@ -134,7 +134,7 @@ func (m *Dao) Update(id interface{}, info interface{}, columns ...string) (int64
 }
 
 // Get 通过主键查询单个
-func (m *Dao) Get(id interface{}, info interface{}) (bool, error) {
+func (m *Dao) Get(id any, info any) (bool, error) {
 	if m.daoSession != nil {
 		return m.daoSession.ID(id).Get(info)
 	}
@@ -142,7 +142,7 @@ func (m *Dao) Get(id interface{}, info interface{}) (bool, error) {
 }
 
 // UpdateWhere 条件更新
-func (m *Dao) UpdateWhere(whereStr string, argList []interface{}, info interface{}, columns ...string) (int64, error) {
+func (m *Dao) UpdateWhere(whereStr string, argList []any, info any, columns ...string) (int64, error) {
 	if m.daoSession != nil {
 		sessionIns := m.daoSession.Where(whereStr, argList...)
 		if len(columns) > 0 {
@@ -158,7 +158,7 @@ func (m *Dao) UpdateWhere(whereStr string, argList []interface{}, info interface
 }
 
 // DeleteWhere 条件删除
-func (m *Dao) DeleteWhere(whereStr string, argList []interface{}, info interface{}) (int64, error) {
+func (m *Dao) DeleteWhere(whereStr string, argList []any, info any) (int64, error) {
 	if m.daoSession != nil {
 		return m.daoSession.Where(whereStr, argList...).Unscoped().Delete(info)
 	}
@@ -166,7 +166,7 @@ func (m *Dao) DeleteWhere(whereStr string, argList []interface{}, info interface
 }
 
 // GetWhere 通过where查询单个
-func (m *Dao) GetWhere(whereStr string, argList []interface{}, info interface{}) (bool, error) {
+func (m *Dao) GetWhere(whereStr string, argList []any, info any) (bool, error) {
 	if m.daoSession != nil {
 		return m.daoSession.Where(whereStr, argList...).Get(info)
 	}
@@ -197,12 +197,12 @@ func (m *Dao) TransAction(callback TransCallback) error {
 }
 
 // GetListByMap 通过对象查询列表
-func (m *Dao) GetListByMap(info map[string]interface{}, bean interface{}) ([]map[string]string, error) {
+func (m *Dao) GetListByMap(info map[string]any, bean any) ([]map[string]string, error) {
 	tableInfo, err := m.engine.TableInfo(bean)
 	if err != nil {
 		return nil, err
 	}
-	newInfo := make(map[string]interface{})
+	newInfo := make(map[string]any)
 	for name, val := range info {
 		isFind := false
 		for _, oneColumn := range tableInfo.Columns() {
@@ -231,7 +231,7 @@ func (m *Dao) GetListByMap(info map[string]interface{}, bean interface{}) ([]map
 	return retMap, nil
 }
 
-func (m *Dao) explainSqlHandle(sqlOrArgs ...interface{}) {
+func (m *Dao) explainSqlHandle(sqlOrArgs ...any) {
 	if len(sqlOrArgs) == 0 {
 		return
 	}
@@ -311,8 +311,8 @@ func (m *Dao) getStatementType(sql string) string {
 }
 
 // SqlQuery sql查询
-func (m *Dao) SqlQuery(sqlStr string, args ...interface{}) ([]map[string]string, error) {
-	queryParam := make([]interface{}, 0)
+func (m *Dao) SqlQuery(sqlStr string, args ...any) ([]map[string]string, error) {
+	queryParam := make([]any, 0)
 	queryParam = append(queryParam, sqlStr)
 	if args != nil && len(args) > 0 {
 		queryParam = append(queryParam, args...)
@@ -341,8 +341,8 @@ func (m *Dao) SqlQuery(sqlStr string, args ...interface{}) ([]map[string]string,
 }
 
 // SqlExec sql更新
-func (m *Dao) SqlExec(sqlStr string, args ...interface{}) (int64, error) {
-	queryParam := make([]interface{}, 0)
+func (m *Dao) SqlExec(sqlStr string, args ...any) (int64, error) {
+	queryParam := make([]any, 0)
 	queryParam = append(queryParam, sqlStr)
 	if args != nil && len(args) > 0 {
 		queryParam = append(queryParam, args...)

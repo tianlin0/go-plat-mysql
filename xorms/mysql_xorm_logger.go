@@ -7,7 +7,7 @@ import (
 )
 
 // setXormLogger 设置数据库的日志
-func setXormLogger(l interface{}) xormlog.Logger {
+func setXormLogger(l any) xormlog.Logger {
 	if l == nil {
 		return nil
 	}
@@ -42,42 +42,42 @@ func (x *xormLogger) getLogger() logs.ILogger {
 }
 
 // Debug 调试
-func (x *xormLogger) Debug(v ...interface{}) {
+func (x *xormLogger) Debug(v ...any) {
 	x.getLogger().Debug(v...)
 }
 
 // Debugf 调试
-func (x *xormLogger) Debugf(format string, v ...interface{}) {
+func (x *xormLogger) Debugf(format string, v ...any) {
 	x.Debug(fmt.Sprintf(format, v...))
 }
 
 // Error 错误
-func (x *xormLogger) Error(v ...interface{}) {
+func (x *xormLogger) Error(v ...any) {
 	x.getLogger().Error(v...)
 }
 
 // Errorf 错误
-func (x *xormLogger) Errorf(format string, v ...interface{}) {
+func (x *xormLogger) Errorf(format string, v ...any) {
 	x.Error(fmt.Sprintf(format, v...))
 }
 
 // Info 普通
-func (x *xormLogger) Info(v ...interface{}) {
+func (x *xormLogger) Info(v ...any) {
 	x.getLogger().Info(v...)
 }
 
 // Infof 普通
-func (x *xormLogger) Infof(format string, v ...interface{}) {
+func (x *xormLogger) Infof(format string, v ...any) {
 	x.Info(fmt.Sprintf(format, v...))
 }
 
 // Warn 警告
-func (x *xormLogger) Warn(v ...interface{}) {
+func (x *xormLogger) Warn(v ...any) {
 	x.getLogger().Warn(v...)
 }
 
 // Warnf 警告
-func (x *xormLogger) Warnf(format string, v ...interface{}) {
+func (x *xormLogger) Warnf(format string, v ...any) {
 	x.Warn(fmt.Sprintf(format, v...))
 }
 

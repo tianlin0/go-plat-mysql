@@ -8,7 +8,7 @@ import (
 	"xorm.io/xorm"
 )
 
-func checkInitDB(ctx context.Context, child interface{}, co *startupcfg.MysqlConfig, isPanic bool) *Dao {
+func checkInitDB(ctx context.Context, child any, co *startupcfg.MysqlConfig, isPanic bool) *Dao {
 	obj, ok := child.(interface {
 		initDB(ctx context.Context, co *startupcfg.MysqlConfig) (*Dao, error)
 	})
@@ -19,7 +19,7 @@ func checkInitDB(ctx context.Context, child interface{}, co *startupcfg.MysqlCon
 	if ret == nil || err != nil {
 		logs.CtxLogger(ctx).Error("InitDatabase error:", co)
 		if isPanic {
-			panic(interface{}(co))
+			panic(any(co))
 		}
 		return nil
 	}
@@ -29,7 +29,7 @@ func checkInitDB(ctx context.Context, child interface{}, co *startupcfg.MysqlCon
 }
 
 // InitXormEngine 对外调用继承Dao的对象，进行数据库连接初始化
-func InitXormEngine(ctx context.Context, child interface{}, con *startupcfg.MysqlConfig, isPanic ...bool) (*xorm.Engine, error) {
+func InitXormEngine(ctx context.Context, child any, con *startupcfg.MysqlConfig, isPanic ...bool) (*xorm.Engine, error) {
 	isPanicBool := false
 	if len(isPanic) >= 1 {
 		isPanicBool = isPanic[0]

@@ -45,7 +45,7 @@ package session
 //
 //// Get 获取session信息
 //func Get(store *sessions.CookieStore, r *http.Request, sessionName string,
-//	keyName string) (interface{}, error) {
+//	keyName string) (any, error) {
 //	session, err := store.Get(r, sessionName)
 //	if err != nil {
 //		return nil, err
@@ -59,7 +59,7 @@ package session
 //
 //// Save 保存session信息
 //func Save(store *sessions.CookieStore, r *http.Request, w http.ResponseWriter,
-//	sessionName string, dataMap map[string]interface{}, age int) error {
+//	sessionName string, dataMap map[string]any, age int) error {
 //	session, err := store.Get(r, sessionName)
 //	if err != nil {
 //		return err

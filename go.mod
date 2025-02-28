@@ -3,8 +3,11 @@ module github.com/tianlin0/go-plat-mysql
 go 1.23.2
 
 require (
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/go-sql-driver/mysql v1.9.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
+	github.com/samber/lo v1.47.0
+	github.com/tianlin0/go-plat-startupcfg v1.0.20250224002
 	github.com/tianlin0/go-plat-utils v0.0.0-20250219033730-6c76daace332
 	xorm.io/core v0.7.3
 	xorm.io/xorm v1.3.9
@@ -12,6 +15,11 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Knetic/govaluate v3.0.0+incompatible // indirect
+	github.com/PaesslerAG/gval v1.2.4 // indirect
+	github.com/andeya/ameda v1.5.3 // indirect
+	github.com/andeya/goutil v1.0.1 // indirect
+	github.com/bytedance/go-tagexpr/v2 v2.9.11 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/goccy/go-json v0.8.1 // indirect
@@ -21,6 +29,9 @@ require (
 	github.com/jimstudt/http-authentication v0.0.0-20140401203705-3eca13d6893a // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
+	github.com/lqiz/expr v1.1.4 // indirect
 	github.com/marspere/goencrypt v1.0.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -30,8 +41,8 @@ require (
 	github.com/panjf2000/ants/v2 v2.10.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/samber/lo v1.47.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/soniah/evaler v2.2.0+incompatible // indirect
 	github.com/sony/sonyflake v1.2.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect

@@ -10,17 +10,17 @@ import (
 	"strings"
 )
 
-// SqlCondition 表示单个查询条件
-type SqlCondition struct {
+// Condition 表示单个查询条件
+type Condition struct {
 	Field    string
 	Operator string
-	Value    interface{}
+	Value    any
 }
 
-// SqlLogicCondition 表示逻辑分组
-type SqlLogicCondition struct {
-	Conditions []interface{} // 可以是 SqlCondition 或 SqlLogicCondition
-	Operator   string        // "AND" 或 "OR"
+// LogicCondition 表示逻辑分组
+type LogicCondition struct {
+	Conditions []any  // 可以是 Condition 或 LogicCondition
+	Operator   string // "AND" 或 "OR"
 }
 
 var (
@@ -64,12 +64,12 @@ func (s *Statement) getColumnLikeSql(oldValue string, replaceList []string, esca
 	return oldValue, oneEscapeStr, true
 }
 
-// getSqlColumnForLike 获取列名转义sql
-func (s *Statement) getSqlColumnForLike(oldValue string) (retValLike string, retParam string) {
+// GetSqlColumnForLike 获取列名转义sql
+func (s *Statement) GetSqlColumnForLike(oldValue string) (retValLike string, retParam string) {
 	newValue, escape, retTrue := s.getColumnLikeSql(oldValue, likeUseReplaceList, likeUseEscapeList)
 	if retTrue {
 		if escape != "" {
-			return "? escape '" + escape + "'", newValue
+			return "? ESCAPE '" + escape + "'", newValue
 		}
 	}
 
@@ -77,20 +77,20 @@ func (s *Statement) getSqlColumnForLike(oldValue string) (retValLike string, ret
 }
 
 // GenerateWhereClauseByMap 通过Map获取where语句
-func (s *Statement) GenerateWhereClauseByMap(whereMap map[string]interface{}) (string, []interface{}) {
-	oneLogicCondition := SqlLogicCondition{
-		Conditions: make([]interface{}, 0),
+func (s *Statement) GenerateWhereClauseByMap(whereMap map[string]any) (string, []any) {
+	oneLogicCondition := LogicCondition{
+		Conditions: make([]any, 0),
 		Operator:   "AND",
 	}
 	for key, val := range whereMap {
-		oneCondition := SqlCondition{
+		oneCondition := Condition{
 			Field:    key,
 			Operator: "=",
 			Value:    val,
 		}
 
 		s := reflect.ValueOf(val)
-		if one, ok := s.Interface().(SqlCondition); ok {
+		if one, ok := s.Interface().(Condition); ok {
 			oneCondition.Operator = one.Operator
 			oneCondition.Value = one.Value
 		}
@@ -100,7 +100,7 @@ func (s *Statement) GenerateWhereClauseByMap(whereMap map[string]interface{}) (s
 }
 
 // GenerateWhereClause 生成 WHERE 语句
-func (s *Statement) GenerateWhereClause(group SqlLogicCondition) (string, []interface{}) {
+func (s *Statement) GenerateWhereClause(group LogicCondition) (string, []any) {
 	if group.Operator == "" {
 		group.Operator = "AND"
 	}
@@ -108,17 +108,17 @@ func (s *Statement) GenerateWhereClause(group SqlLogicCondition) (string, []inte
 	group.Operator = strings.ToUpper(group.Operator)
 
 	var parts []string
-	dataList := make([]interface{}, 0)
-	for _, cond := range group.Conditions {
-		switch c := cond.(type) {
-		case SqlCondition:
+	dataList := make([]any, 0)
+	for _, condTemp := range group.Conditions {
+		switch c := condTemp.(type) {
+		case Condition:
 			sqlStr, tempDataList := s.generateWhereFromCondition(c)
 			if sqlStr != "" {
 				parts = append(parts, fmt.Sprintf("(%s)", sqlStr))
 				dataList = append(dataList, tempDataList...)
 			}
 			continue
-		case SqlLogicCondition:
+		case LogicCondition:
 			sqlStr, tempDataList := s.GenerateWhereClause(c)
 			if sqlStr != "" {
 				parts = append(parts, fmt.Sprintf("(%s)", sqlStr))
@@ -134,7 +134,7 @@ func (s *Statement) GenerateWhereClause(group SqlLogicCondition) (string, []inte
 }
 
 // generateWhereClause 生成 WHERE 语句
-func (s *Statement) generateWhereFromCondition(con SqlCondition) (string, []interface{}) {
+func (s *Statement) generateWhereFromCondition(con Condition) (string, []any) {
 	con.Operator = strings.ToUpper(con.Operator)
 
 	//如果val是数组，则operator只能是in
@@ -142,7 +142,7 @@ func (s *Statement) generateWhereFromCondition(con SqlCondition) (string, []inte
 		s := reflect.ValueOf(con.Value)
 		//需要去重处理
 		paramList := make([]string, 0)
-		dataList := make([]interface{}, 0)
+		dataList := make([]any, 0)
 		onlyArray := make([]string, 0)
 		for i := 0; i < s.Len(); i++ {
 			ele := s.Index(i).Interface()
@@ -161,7 +161,7 @@ func (s *Statement) generateWhereFromCondition(con SqlCondition) (string, []inte
 			}
 			return fmt.Sprintf("`%s` %s (%s)", con.Field, opt, strings.Join(paramList, ",")), dataList
 		}
-		return "", []interface{}{}
+		return "", []any{}
 	}
 
 	if con.Operator == "" {
@@ -170,16 +170,16 @@ func (s *Statement) generateWhereFromCondition(con SqlCondition) (string, []inte
 
 	//必须是支持的类型，乱传不支持的类型则跳过
 	if ok, _ := cond.Contains(operatorList, con.Operator); !ok {
-		return "", []interface{}{}
+		return "", []any{}
 	}
 
 	if con.Operator == "LIKE" {
-		// 这里需要对value进行特殊处理
-		valLike, newVal := s.getSqlColumnForLike(conv.String(con.Value))
-		return fmt.Sprintf("`%s` %s %s", con.Field, con.Operator, valLike), []interface{}{newVal}
+		// 这里需要对value进行特殊处理，不能处理，会造成正确的%也会换掉了，就会造成错误
+		//valLike, newVal := s.getSqlColumnForLike(conv.String(con.Value))
+		return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []any{con.Value}
 	}
 
-	return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []interface{}{con.Value}
+	return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []any{con.Value}
 }
 
 // buildFieldNames 需要将 `name` 转为 name
@@ -190,9 +190,13 @@ func (s *Statement) buildFieldNames(canUpdateFieldNames []string) []string {
 	})
 	return canUpdateFieldNamesTemp
 }
+func (s *Statement) buildOneFieldName(oneField string) string {
+	oneField = strings.ReplaceAll(oneField, "`", "")
+	return oneField
+}
 
 // getColumnListAndDataList 获取数据库的字段列表与数据
-func (s *Statement) getColumnListAndDataList(fieldNames []string, columnMap map[string]interface{}) ([]string, []interface{}) {
+func (s *Statement) getColumnListAndDataList(fieldNames []string, columnMap map[string]any) ([]string, []any) {
 	fieldNamesTemp := s.buildFieldNames(fieldNames)
 
 	columnList := make([]string, 0)
@@ -203,7 +207,7 @@ func (s *Statement) getColumnListAndDataList(fieldNames []string, columnMap map[
 			columnList = append(columnList, column)
 		}
 	})
-	columnDataList := make([]interface{}, 0, len(columnList))
+	columnDataList := make([]any, 0, len(columnList))
 
 	if len(columnList) == 0 {
 		return columnList, columnDataList
@@ -215,24 +219,27 @@ func (s *Statement) getColumnListAndDataList(fieldNames []string, columnMap map[
 }
 
 // InsertSql 插入的sql语句
-func (s *Statement) InsertSql(tableName string, allColumns []string, insertMap map[string]interface{}) (string, []interface{}) {
+func (s *Statement) InsertSql(tableName string, allColumns []string, insertMap map[string]any) (string, []any) {
+	allColumns = s.buildFieldNames(allColumns)
 	columnList, columnDataList := s.getColumnListAndDataList(allColumns, insertMap)
 	if len(columnList) == 0 {
 		return "", columnDataList
 	}
-	query := fmt.Sprintf("INSERT INTO `%s` set (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+	query := fmt.Sprintf("INSERT INTO %s SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
 	return query, columnDataList
 }
 
 // UpdateSql 更新的sql语句
-func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap map[string]interface{}, whereMap map[string]interface{}) (string, []interface{}) {
+func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap map[string]any, whereMap map[string]any) (string, []any) {
+	allColumns = s.buildFieldNames(allColumns)
+
 	columnList, columnDataList := s.getColumnListAndDataList(allColumns, updateMap)
 	if len(columnList) == 0 {
 		return "", columnDataList
 	}
 
 	//过滤key
-	whereNewMap := make(map[string]interface{})
+	whereNewMap := make(map[string]any)
 	for k, v := range whereMap {
 		if lo.IndexOf(allColumns, k) >= 0 {
 			whereNewMap[k] = v
@@ -242,16 +249,30 @@ func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap m
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
 	if len(whereString) == 0 {
 		//没有where语句
-		query := fmt.Sprintf("UPDATE `%s` set (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+		query := fmt.Sprintf("UPDATE %s SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
 		return query, columnDataList
 	}
 	columnDataList = append(columnDataList, whereDataList...)
-	query := fmt.Sprintf("UPDATE `%s` set (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
+	query := fmt.Sprintf("UPDATE %s SET (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
 	return query, columnDataList
 }
 
+// UpdateSqlByWhereCondition 更新的sql语句
+func (s *Statement) UpdateSqlByWhereCondition(tableName string, allColumns []string, updateMap map[string]any, whereCondition LogicCondition) (string, []any) {
+	query, updateColumnDataList := s.UpdateSql(tableName, allColumns, updateMap, map[string]any{})
+	whereStr, whereDataList := s.GenerateWhereClause(whereCondition)
+	if whereStr == "" {
+		return query, updateColumnDataList
+	}
+	query = fmt.Sprintf("%s WHERE %s", query, whereStr)
+	updateColumnDataList = append(updateColumnDataList, whereDataList...)
+	return query, updateColumnDataList
+}
+
 // SelectSql 查询的sql语句
-func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr string, whereMap map[string]interface{}, offset, num int) (string, []interface{}) {
+func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr string, whereMap map[string]any, offset, limit int) (string, []any) {
+	allColumns = s.buildFieldNames(allColumns)
+
 	if selectStr == "" {
 		selectStr = "*"
 	} else {
@@ -260,6 +281,7 @@ func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr s
 		lo.ForEach(selectList, func(item string, index int) {
 			item = strings.TrimSpace(item)
 			if lo.IndexOf(allColumns, item) >= 0 {
+				item = s.buildOneFieldName(item)
 				newSelectList = append(newSelectList, item)
 			}
 		})
@@ -272,7 +294,7 @@ func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr s
 	}
 
 	//过滤key
-	whereNewMap := make(map[string]interface{})
+	whereNewMap := make(map[string]any)
 	for k, v := range whereMap {
 		if lo.IndexOf(allColumns, k) >= 0 {
 			whereNewMap[k] = v
@@ -280,30 +302,59 @@ func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr s
 	}
 
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
-	query := fmt.Sprintf("SELECT %s FROME `%s`", selectStr, tableName)
+	query := fmt.Sprintf("SELECT %s FROM %s", selectStr, tableName)
 	if whereString != "" {
 		query = fmt.Sprintf("%s WHERE %s", query, whereString)
 	}
-	if offset >= 0 && num > 0 {
-		query = fmt.Sprintf("%s LIMIT %d, %d", query, offset, num)
+	if offset >= 0 && limit > 0 {
+		query = fmt.Sprintf("%s LIMIT %d, %d", query, offset, limit)
 	}
 
 	return query, whereDataList
 }
 
+// SelectSqlByWhereCondition 查询的sql语句
+func (s *Statement) SelectSqlByWhereCondition(tableName string, allColumns []string, selectStr string, whereCondition LogicCondition, offset, num int) (string, []any) {
+	query, selectDataList := s.SelectSql(tableName, allColumns, selectStr, map[string]any{}, 0, 0)
+	whereStr, whereDataList := s.GenerateWhereClause(whereCondition)
+	if whereStr == "" {
+		return query, selectDataList
+	}
+	query = fmt.Sprintf("%s WHERE %s", query, whereStr)
+	if offset >= 0 && num > 0 {
+		query = fmt.Sprintf("%s LIMIT %d, %d", query, offset, num)
+	}
+	selectDataList = append(selectDataList, whereDataList...)
+	return query, selectDataList
+}
+
 // DeleteSql 删除的sql语句
-func (s *Statement) DeleteSql(tableName string, allColumns []string, whereMap map[string]interface{}) (string, []interface{}) {
+func (s *Statement) DeleteSql(tableName string, allColumns []string, whereMap map[string]any) (string, []any) {
+	allColumns = s.buildFieldNames(allColumns)
+
 	//过滤key
-	whereNewMap := make(map[string]interface{})
+	whereNewMap := make(map[string]any)
 	for k, v := range whereMap {
 		if lo.IndexOf(allColumns, k) >= 0 {
 			whereNewMap[k] = v
 		}
 	}
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
-	query := fmt.Sprintf("DELETE FROME `%s`", tableName)
+	query := fmt.Sprintf("DELETE FROM %s", tableName)
 	if whereString != "" {
 		query = fmt.Sprintf("%s WHERE %s", query, whereString)
 	}
 	return query, whereDataList
+}
+
+// DeleteSqlByWhereCondition 删除的sql语句
+func (s *Statement) DeleteSqlByWhereCondition(tableName string, allColumns []string, whereCondition LogicCondition) (string, []any) {
+	query, deleteDataList := s.DeleteSql(tableName, allColumns, map[string]any{})
+	whereStr, whereDataList := s.GenerateWhereClause(whereCondition)
+	if whereStr == "" {
+		return query, deleteDataList
+	}
+	query = fmt.Sprintf("%s WHERE %s", query, whereStr)
+	deleteDataList = append(deleteDataList, whereDataList...)
+	return query, deleteDataList
 }
