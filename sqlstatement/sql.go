@@ -250,6 +250,18 @@ func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap m
 	return query, columnDataList
 }
 
+// UpdateSqlByWhereCondition 更新的sql语句
+func (s *Statement) UpdateSqlByWhereCondition(tableName string, allColumns []string, updateMap map[string]interface{}, whereCondition SqlLogicCondition) (string, []interface{}) {
+	query, updateColumnDataList := s.UpdateSql(tableName, allColumns, updateMap, map[string]interface{}{})
+	whereStr, whereDataList := s.GenerateWhereClause(whereCondition)
+	if whereStr == "" {
+		return query, updateColumnDataList
+	}
+	query = fmt.Sprintf("%s WHERE %s", query, whereStr)
+	updateColumnDataList = append(updateColumnDataList, whereDataList...)
+	return query, updateColumnDataList
+}
+
 // SelectSql 查询的sql语句
 func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr string, whereMap map[string]interface{}, offset, num int) (string, []interface{}) {
 	if selectStr == "" {
@@ -291,6 +303,21 @@ func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr s
 	return query, whereDataList
 }
 
+// SelectSqlByWhereCondition 查询的sql语句
+func (s *Statement) SelectSqlByWhereCondition(tableName string, allColumns []string, selectStr string, whereCondition SqlLogicCondition, offset, num int) (string, []interface{}) {
+	query, selectDataList := s.SelectSql(tableName, allColumns, selectStr, map[string]interface{}{}, 0, 0)
+	whereStr, whereDataList := s.GenerateWhereClause(whereCondition)
+	if whereStr == "" {
+		return query, selectDataList
+	}
+	query = fmt.Sprintf("%s WHERE %s", query, whereStr)
+	if offset >= 0 && num > 0 {
+		query = fmt.Sprintf("%s LIMIT %d, %d", query, offset, num)
+	}
+	selectDataList = append(selectDataList, whereDataList...)
+	return query, selectDataList
+}
+
 // DeleteSql 删除的sql语句
 func (s *Statement) DeleteSql(tableName string, allColumns []string, whereMap map[string]interface{}) (string, []interface{}) {
 	//过滤key
@@ -306,4 +333,16 @@ func (s *Statement) DeleteSql(tableName string, allColumns []string, whereMap ma
 		query = fmt.Sprintf("%s WHERE %s", query, whereString)
 	}
 	return query, whereDataList
+}
+
+// DeleteSqlByWhereCondition 删除的sql语句
+func (s *Statement) DeleteSqlByWhereCondition(tableName string, allColumns []string, whereCondition SqlLogicCondition) (string, []interface{}) {
+	query, deleteDataList := s.DeleteSql(tableName, allColumns, map[string]interface{}{})
+	whereStr, whereDataList := s.GenerateWhereClause(whereCondition)
+	if whereStr == "" {
+		return query, deleteDataList
+	}
+	query = fmt.Sprintf("%s WHERE %s", query, whereStr)
+	deleteDataList = append(deleteDataList, whereDataList...)
+	return query, deleteDataList
 }
