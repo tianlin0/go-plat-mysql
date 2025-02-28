@@ -64,8 +64,8 @@ func (s *Statement) getColumnLikeSql(oldValue string, replaceList []string, esca
 	return oldValue, oneEscapeStr, true
 }
 
-// getSqlColumnForLike 获取列名转义sql
-func (s *Statement) getSqlColumnForLike(oldValue string) (retValLike string, retParam string) {
+// GetSqlColumnForLike 获取列名转义sql
+func (s *Statement) GetSqlColumnForLike(oldValue string) (retValLike string, retParam string) {
 	newValue, escape, retTrue := s.getColumnLikeSql(oldValue, likeUseReplaceList, likeUseEscapeList)
 	if retTrue {
 		if escape != "" {
@@ -179,9 +179,9 @@ func (s *Statement) generateWhereFromCondition(con SqlCondition) (string, []inte
 	}
 
 	if con.Operator == "LIKE" {
-		// 这里需要对value进行特殊处理
-		valLike, newVal := s.getSqlColumnForLike(conv.String(con.Value))
-		return fmt.Sprintf("`%s` %s %s", con.Field, con.Operator, valLike), []interface{}{newVal}
+		// 这里需要对value进行特殊处理，不能处理，会造成正确的%也会换掉了，就会造成错误
+		//valLike, newVal := s.getSqlColumnForLike(conv.String(con.Value))
+		return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []interface{}{con.Value}
 	}
 
 	return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []interface{}{con.Value}
