@@ -24,9 +24,11 @@ type LogicCondition struct {
 }
 
 var (
-	operatorList       = []string{"LIKE", "=", ">=", ">", "<=", "<"} // 数据库支持的类型
-	likeUseReplaceList = []string{"%", "_"}                          //like需要替换的字符
-	likeUseEscapeList  = []string{"/", "&", "#", "@", "^", "$", "!"} //定义可以使用的escape列表
+	operatorList         = []string{"LIKE", "=", ">=", ">", "<=", "<", "IN", "NOT IN"} // 数据库支持的类型
+	likeUseReplaceList   = []string{"%", "_"}                                          //like需要替换的字符
+	likeUseEscapeList    = []string{"/", "&", "#", "@", "^", "$", "!"}                 //定义可以使用的escape列表
+	defaultMapOperator   = "="
+	defaultLogicOperator = "AND"
 )
 
 type Statement struct {
@@ -80,12 +82,12 @@ func (s *Statement) GetSqlColumnForLike(oldValue string) (retValLike string, ret
 func (s *Statement) GenerateWhereClauseByMap(whereMap map[string]any) (string, []any) {
 	oneLogicCondition := LogicCondition{
 		Conditions: make([]any, 0),
-		Operator:   "AND",
+		Operator:   defaultLogicOperator,
 	}
 	for key, val := range whereMap {
 		oneCondition := Condition{
 			Field:    key,
-			Operator: "=",
+			Operator: s.getFieldOperator(val),
 			Value:    val,
 		}
 
@@ -99,10 +101,17 @@ func (s *Statement) GenerateWhereClauseByMap(whereMap map[string]any) (string, [
 	return s.GenerateWhereClause(oneLogicCondition)
 }
 
+func (s *Statement) getFieldOperator(val any) string {
+	if reflect.TypeOf(val).Kind() == reflect.Slice {
+		return "IN"
+	}
+	return defaultMapOperator
+}
+
 // GenerateWhereClause 生成 WHERE 语句
 func (s *Statement) GenerateWhereClause(group LogicCondition) (string, []any) {
 	if group.Operator == "" {
-		group.Operator = "AND"
+		group.Operator = defaultLogicOperator
 	}
 
 	group.Operator = strings.ToUpper(group.Operator)
@@ -112,7 +121,10 @@ func (s *Statement) GenerateWhereClause(group LogicCondition) (string, []any) {
 	for _, condTemp := range group.Conditions {
 		switch c := condTemp.(type) {
 		case Condition:
-			sqlStr, tempDataList := s.generateWhereFromCondition(c)
+			sqlStr, tempDataList, err := s.generateWhereFromCondition(c)
+			if err != nil {
+				continue
+			}
 			if sqlStr != "" {
 				parts = append(parts, fmt.Sprintf("(%s)", sqlStr))
 				dataList = append(dataList, tempDataList...)
@@ -134,7 +146,7 @@ func (s *Statement) GenerateWhereClause(group LogicCondition) (string, []any) {
 }
 
 // generateWhereClause 生成 WHERE 语句
-func (s *Statement) generateWhereFromCondition(con Condition) (string, []any) {
+func (s *Statement) generateWhereFromCondition(con Condition) (string, []any, error) {
 	con.Operator = strings.ToUpper(con.Operator)
 
 	//如果val是数组，则operator只能是in
@@ -159,27 +171,27 @@ func (s *Statement) generateWhereFromCondition(con Condition) (string, []any) {
 			if con.Operator != "" && con.Operator == "NOT IN" {
 				opt = con.Operator
 			}
-			return fmt.Sprintf("`%s` %s (%s)", con.Field, opt, strings.Join(paramList, ",")), dataList
+			return fmt.Sprintf("`%s` %s (%s)", con.Field, opt, strings.Join(paramList, ",")), dataList, nil
 		}
-		return "", []any{}
+		return "", []any{}, fmt.Errorf("list is empty")
 	}
 
 	if con.Operator == "" {
-		con.Operator = "="
+		con.Operator = defaultMapOperator
 	}
 
 	//必须是支持的类型，乱传不支持的类型则跳过
 	if ok, _ := cond.Contains(operatorList, con.Operator); !ok {
-		return "", []any{}
+		return "", []any{}, fmt.Errorf("operator not support: %s", con.Operator)
 	}
 
 	if con.Operator == "LIKE" {
 		// 这里需要对value进行特殊处理，不能处理，会造成正确的%也会换掉了，就会造成错误
 		//valLike, newVal := s.getSqlColumnForLike(conv.String(con.Value))
-		return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []any{con.Value}
+		return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []any{con.Value}, nil
 	}
 
-	return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []any{con.Value}
+	return fmt.Sprintf("`%s` %s ?", con.Field, con.Operator), []any{con.Value}, nil
 }
 
 // buildFieldNames 需要将 `name` 转为 name
@@ -225,7 +237,11 @@ func (s *Statement) InsertSql(tableName string, allColumns []string, insertMap m
 	if len(columnList) == 0 {
 		return "", columnDataList
 	}
-	query := fmt.Sprintf("INSERT INTO %s SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+	tableName = addCodeForOneColumn(tableName)
+	columnList = lo.Map(columnList, func(item string, index int) string {
+		return addCodeForOneColumn(item)
+	})
+	query := fmt.Sprintf("INSERT INTO %s SET %s", tableName, strings.Join(columnList, "=?,")+"=?")
 	return query, columnDataList
 }
 
@@ -246,14 +262,23 @@ func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap m
 		}
 	}
 
+	for i, column := range columnList {
+		columnList[i] = addCodeForOneColumn(column)
+	}
+
+	tableName = addCodeForOneColumn(tableName)
+	columnList = lo.Map(columnList, func(item string, index int) string {
+		return addCodeForOneColumn(item)
+	})
+
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
 	if len(whereString) == 0 {
 		//没有where语句
-		query := fmt.Sprintf("UPDATE %s SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+		query := fmt.Sprintf("UPDATE %s SET %s", tableName, strings.Join(columnList, "=?,")+"=?")
 		return query, columnDataList
 	}
 	columnDataList = append(columnDataList, whereDataList...)
-	query := fmt.Sprintf("UPDATE %s SET (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
 	return query, columnDataList
 }
 
@@ -300,6 +325,7 @@ func (s *Statement) SelectSql(tableName string, allColumns []string, selectStr s
 			whereNewMap[k] = v
 		}
 	}
+	tableName = addCodeForOneColumn(tableName)
 
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
 	query := fmt.Sprintf("SELECT %s FROM %s", selectStr, tableName)
@@ -340,6 +366,7 @@ func (s *Statement) DeleteSql(tableName string, allColumns []string, whereMap ma
 		}
 	}
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
+	tableName = addCodeForOneColumn(tableName)
 	query := fmt.Sprintf("DELETE FROM %s", tableName)
 	if whereString != "" {
 		query = fmt.Sprintf("%s WHERE %s", query, whereString)
