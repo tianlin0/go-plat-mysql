@@ -246,14 +246,18 @@ func (s *Statement) UpdateSql(tableName string, allColumns []string, updateMap m
 		}
 	}
 
+	for i, column := range columnList {
+		columnList[i] = addCodeForOneColumn(column)
+	}
+
 	whereString, whereDataList := s.GenerateWhereClauseByMap(whereNewMap)
 	if len(whereString) == 0 {
 		//没有where语句
-		query := fmt.Sprintf("UPDATE %s SET (%s)", tableName, strings.Join(columnList, "=?,")+"=?")
+		query := fmt.Sprintf("UPDATE %s SET %s", tableName, strings.Join(columnList, "=?,")+"=?")
 		return query, columnDataList
 	}
 	columnDataList = append(columnDataList, whereDataList...)
-	query := fmt.Sprintf("UPDATE %s SET (%s) WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s", tableName, strings.Join(columnList, "=?,")+"=?", whereString)
 	return query, columnDataList
 }
 

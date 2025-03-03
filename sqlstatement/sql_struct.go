@@ -173,7 +173,8 @@ func (s *SqlStruct) UpdateSqlByMap(in any, columns []string, whereMap map[string
 	}
 
 	st := new(Statement)
-	sqlStr, values := st.UpdateSql(tableName, columns, updateMap, whereMap)
+	allColumns, _ := getSliceByMap(allColumnMap)
+	sqlStr, values := st.UpdateSql(tableName, allColumns, updateMap, whereMap)
 	return sqlStr, values, nil
 }
 
@@ -183,9 +184,9 @@ func (s *SqlStruct) UpdateSqlWithUpdateMap(updateMap map[string]any, whereMap ma
 	if err != nil {
 		return "", nil, err
 	}
-	columns, _ := getSliceByMap(columnMap)
+	allColumns, _ := getSliceByMap(columnMap)
 	st := new(Statement)
-	sqlStr, values := st.UpdateSql(tableName, columns, updateMap, whereMap)
+	sqlStr, values := st.UpdateSql(tableName, allColumns, updateMap, whereMap)
 	return sqlStr, values, nil
 }
 
